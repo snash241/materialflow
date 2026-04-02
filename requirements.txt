@@ -1,0 +1,16 @@
+
+# Base de données
+psycopg2-binary==2.9.9
+sqlalchemy==2.0.27
+
+# Manipulation de données
+pandas==2.2.0
+
+# Appels API
+requests==2.31.0
+
+# Variables d'environnement
+python-dotenv==1.0.0
+
+# Qualité de données
+great-expectations==0.18.8
