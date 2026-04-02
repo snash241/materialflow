@@ -1,0 +1,30 @@
+# Variables d'environnement (contiennent des mots de passe)
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.venv/
+venv/
+dist/
+build/
+
+# Logs (générés automatiquement, pas du code)
+logs/
+*.log
+
+# Données brutes (souvent trop lourdes pour Git)
+data/
+
+# Jupyter (checkpoints auto-générés)
+.ipynb_checkpoints/
+
+# IDE
+.vscode/settings.json
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
