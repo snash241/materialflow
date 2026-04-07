@@ -13,4 +13,4 @@ requests==2.31.0
 python-dotenv==1.0.0
 
 # Qualité de données
-great-expectations==0.18.8
+great-expectations==0.18.8pyarrow>=14.0
