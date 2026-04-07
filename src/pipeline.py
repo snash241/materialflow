@@ -19,6 +19,9 @@ from src.loading.postgres import (
     test_connection,
 )
 from src.transformation.products import transform_raw_to_staging
+# Note : les quality checks sont appelés à la fin de la transformation, (cette lign a été rajouter plus tard dans pour l'étapes quality checks) mais on peut aussi les appeler à la fin du pipeline pour faire un check global sur le résultat final.
+from src.quality.checks import run_all_checks
+
 
 # Logger de ce module
 logger = logging.getLogger(__name__)
@@ -194,20 +197,52 @@ def run_pipeline(
         stats["rows_loaded_staging"] = nb_staging
         logger.info(f"[3/4] STAGING OK — {nb_staging} lignes chargées")
 
-        # ── Étape 4 : Log du run ───────────────────────────────
-        stats["status"] = "success"
-        logger.info(f"[4/4] Logging du run...")
+        
+        # ── Étape 4 : Data Quality checks ─────────────────────
+        # On vérifie les données APRÈS leur chargement en base.
+        # Si un check échoue, le run est marqué "partial" —
+        # les données existent mais sont suspectes.
+        logger.info("[4/5] Data Quality checks...")
+
+        rapport_qualite = run_all_checks(
+            df_staging=df_staging,
+            run_id=run_id,
+        )
+
+        if rapport_qualite["all_passed"]:
+            logger.info(
+                f"[4/5] Data Quality OK — "
+                f"{rapport_qualite['passed']}/"
+                f"{rapport_qualite['total_checks']} checks réussis"
+            )
+            stats["status"] = "success"
+        else:
+            logger.warning(
+                f"[4/5] Data Quality PARTIELLE — "
+                f"{rapport_qualite['failed']} checks échoués :"
+            )
+            for r in rapport_qualite["results"]:
+                if not r["passed"]:
+                    logger.warning(f"    ❌ {r['check']} — {r['message']}")
+            stats["status"] = "partial"
+
+        # ── Étape 5 : Log du run ───────────────────────────────
+        logger.info("[5/5] Logging du run...")
 
         log_pipeline_run(
             run_id=run_id,
             pipeline_name=f"materialflow_{category}",
             started_at=started_at,
             ended_at=datetime.now(),
-            status="success",
+            status=stats["status"],
             rows_extracted=stats["rows_extracted"],
             rows_loaded=nb_staging,
             rows_rejected=rows_rejected,
-            run_params=f"category={category}, max_pages={max_pages}",
+            run_params=(
+                f"category={category}, max_pages={max_pages}, "
+                f"dq_checks={rapport_qualite['passed']}/"
+                f"{rapport_qualite['total_checks']}"
+            ),
         )
 
         logger.info(f"{'='*50}")
@@ -216,10 +251,18 @@ def run_pipeline(
         logger.info(f"Raw       : {stats['rows_loaded_raw']}")
         logger.info(f"Staging   : {stats['rows_loaded_staging']}")
         logger.info(f"Rejetés   : {stats['rows_rejected']}")
+        logger.info(
+            f"DQ Checks : {rapport_qualite['passed']}/"
+            f"{rapport_qualite['total_checks']}"
+        )
+        logger.info(f"Statut    : {stats['status']}")
         logger.info(f"{'='*50}")
 
         return stats
-
+        
+        
+        
+    
     except Exception as e:
         # ── Gestion d'erreur globale ───────────────────────────
         # Quelle que soit l'erreur, on la logue en base AVANT
@@ -242,7 +285,4 @@ def run_pipeline(
             run_params=f"category={category}, max_pages={max_pages}",
         )
 
-        # On propage l'exception pour qu'Airflow la détecte
-        # et marque la tâche comme failed
         raise
-    
