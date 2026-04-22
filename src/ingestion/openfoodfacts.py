@@ -2,7 +2,8 @@
 
 import logging
 import time
-from typing import Optional
+#from typing import Optional
+from typing import Optional, List
 
 import requests
 from requests.adapters import HTTPAdapter
@@ -154,7 +155,7 @@ def fetch_all_pages(
     category: str,
     max_pages: Optional[int] = None,
     delay_between_pages: float = 1.0,
-) -> list[dict]:
+) -> List[dict]:
     """
     Récupère toutes les pages pour une catégorie.
 
