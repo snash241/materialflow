@@ -140,8 +140,9 @@ def fetch_products_by_category(
         raise
 
     except requests.HTTPError as e:
+        status = e.response.status_code if e.response else "inconnu"
         logger.error(
-            f"Erreur HTTP {e.response.status_code} — "
+            f"Erreur HTTP {status} — "
             f"catégorie='{category}' page={page}"
         )
         raise
